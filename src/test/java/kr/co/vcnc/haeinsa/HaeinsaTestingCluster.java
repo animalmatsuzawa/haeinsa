@@ -26,10 +26,11 @@ import org.apache.hadoop.hbase.HBaseTestingUtility;
 import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
+import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
-import org.apache.hadoop.hbase.client.HTableInterface;
-import org.apache.hadoop.hbase.client.HTablePool;
-import org.apache.hadoop.hbase.util.PoolMap.PoolType;
+import org.apache.hadoop.hbase.client.Table;
 import org.testng.internal.annotations.Sets;
 
 public final class HaeinsaTestingCluster {
@@ -52,8 +53,7 @@ public final class HaeinsaTestingCluster {
     private final Configuration configuration;
 
     private final ExecutorService threadPool;
-    private final HaeinsaTablePool haeinsaTablePool;
-    private final HTablePool hbaseTablePool;
+    private final Connection connection;
     private final HaeinsaTransactionManager transactionManager;
     private final Set<String> createdTableNames;
 
@@ -65,9 +65,8 @@ public final class HaeinsaTestingCluster {
         configuration = cluster.getConfiguration();
 
         threadPool = Executors.newCachedThreadPool();
-        haeinsaTablePool = TestingUtility.createHaeinsaTablePool(configuration, threadPool);
-        hbaseTablePool = new HTablePool(configuration, 128, PoolType.Reusable);
-        transactionManager = new HaeinsaTransactionManager(haeinsaTablePool);
+        connection = ConnectionFactory.createConnection(configuration);
+        transactionManager = new HaeinsaTransactionManager(connection);
         createdTableNames = Sets.newHashSet();
     }
 
@@ -81,12 +80,12 @@ public final class HaeinsaTestingCluster {
 
     public HaeinsaTableIface getHaeinsaTable(String tableName) throws Exception {
         ensureTableCreated(tableName);
-        return haeinsaTablePool.getTable(tableName);
+        return transactionManager.getTable(tableName);
     }
 
-    public HTableInterface getHbaseTable(String tableName) throws Exception {
+    public Table getHbaseTable(String tableName) throws Exception {
         ensureTableCreated(tableName);
-        return hbaseTablePool.getTable(tableName);
+        return connection.getTable(TableName.valueOf(tableName));
     }
 
     private synchronized void ensureTableCreated(String tableName) throws Exception {

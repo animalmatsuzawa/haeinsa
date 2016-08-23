@@ -27,8 +27,8 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowKey;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -778,7 +778,7 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
     public void testHaeinsaTableWithoutTx() throws Exception {
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
-        final HTableInterface hTestTable = context().getHTableInterface("test");
+        final Table hTestTable = context().getHTableInterface("test");
 
         /*
          * - beginTransaction
@@ -920,7 +920,7 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
     public void testDanglingRowLockException() throws Exception {
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
-        final HTableInterface hTestTable = context().getHTableInterface("test");
+        final Table hTestTable = context().getHTableInterface("test");
 
         {
             TRowKey primaryRowKey = new TRowKey().setTableName(testTable.getTableName()).setRow(Bytes.toBytes("James"));

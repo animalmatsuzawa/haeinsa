@@ -51,11 +51,11 @@ import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Get;
-import org.apache.hadoop.hbase.client.HTableInterface;
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
 import org.apache.hadoop.hbase.client.Scan;
+import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.slf4j.Logger;
@@ -74,15 +74,15 @@ import com.google.common.collect.Sets;
  */
 public class HaeinsaTable implements HaeinsaTableIfaceInternal {
     private static final Logger LOGGER = LoggerFactory.getLogger(HaeinsaTable.class);
-    private final HTableInterface table;
+    private final Table table;
 
-    public HaeinsaTable(HTableInterface table) {
+    public HaeinsaTable(Table table) {
         this.table = table;
     }
 
     @Override
     public byte[] getTableName() {
-        return table.getTableName();
+        return table.getName().getName();
     }
 
     @Override
@@ -123,7 +123,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
 
         byte[] row = get.getRow();
-        HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
+        HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table.getName().getName());
         HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
         boolean lockInclusive = false;
         Get hGet = new Get(get.getRow());
@@ -367,7 +367,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         Preconditions.checkNotNull(put);
 
         byte[] row = put.getRow();
-        HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
+        HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table.getName().getName());
         HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
         if (rowState == null) {
             // TODO(improvement) : Should consider to get lock when commit() called.
@@ -477,7 +477,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         byte[] row = delete.getRow();
         // Can't delete entire row in Haeinsa because of lock column. Please specify column families when needed.
         Preconditions.checkArgument(delete.getFamilyMap().size() > 0, "can't delete an entire row.");
-        HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table.getTableName());
+        HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table.getName().getName());
         HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
         if (rowState == null) {
             // TODO(improvement) : Should consider to get lock when commit() called.
@@ -775,7 +775,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
     }
 
-    protected HTableInterface getHTable() {
+    protected Table getTable() {
         return table;
     }
 

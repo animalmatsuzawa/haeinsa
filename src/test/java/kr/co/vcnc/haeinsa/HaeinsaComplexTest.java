@@ -23,6 +23,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -33,12 +35,13 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
  * test, concurrent random increment test, and serializability test.
  */
 public class HaeinsaComplexTest extends HaeinsaTestBase {
+    private static Logger LOG = LoggerFactory.getLogger(HaeinsaComplexTest.class);
 
     /**
      * Test which executes multiple transactions which increment specific value by single thread and check result.
      */
     @Test
-    public void testSimepleIncrement() throws Exception {
+    public void testSimpleIncrement() throws Exception {
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -201,7 +204,7 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
         final AtomicLong value1 = new AtomicLong(new Random().nextInt());
         final AtomicLong value2 = new AtomicLong(new Random().nextInt());
 
-        final long maxIter = 100;
+        final long maxIter = 1;
         final int numberOfJob = 10;
         final CountDownLatch countDownLatch = new CountDownLatch(numberOfJob);
         final AtomicLong successCount = new AtomicLong(0);
@@ -258,6 +261,10 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
                             Assert.assertTrue(value2.compareAndSet(oldValue2, newValue2));
                         }
                     } catch (Exception e) {
+                        // System.out.println("FAILED ITERATION " + iteration + " THREAD " +
+                        //    Thread.currentThread().getName() + " ERROR: " + e.getMessage());
+                        // LOG.error("ERROR", e);
+
                         // fail
                         failCount.getAndIncrement();
                     }

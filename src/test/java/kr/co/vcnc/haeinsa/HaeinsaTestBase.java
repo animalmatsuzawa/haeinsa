@@ -18,6 +18,7 @@ package kr.co.vcnc.haeinsa;
 import java.lang.reflect.Method;
 
 import org.apache.hadoop.hbase.client.HTableInterface;
+import org.apache.hadoop.hbase.client.Table;
 import org.hsqldb.TransactionManager;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeClass;
@@ -126,7 +127,7 @@ public class HaeinsaTestBase {
          * @return instance of {@link HTableInterface}
          * @throws Exception if there is a problem instantiating the HTable
          */
-        public HTableInterface getHTableInterface(String tableName) throws Exception {
+        public Table getHTableInterface(String tableName) throws Exception {
             return getCluster().getHbaseTable(createContextedTableName(tableName));
         }
 

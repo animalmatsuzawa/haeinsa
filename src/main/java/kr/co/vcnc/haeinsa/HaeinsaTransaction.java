@@ -283,7 +283,6 @@ public class HaeinsaTransaction {
     private void commitReadOnly() throws IOException {
         Preconditions.checkState(txStates.getMutationRowStates().size() == 0);
         Preconditions.checkState(txStates.getReadOnlyRowStates().size() > 0);
-        HaeinsaTablePool tablePool = getManager().getTablePool();
 
         // check secondaries
         for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getReadOnlyRowStates().entrySet()) {
@@ -294,7 +293,7 @@ public class HaeinsaTransaction {
                 // if this is primaryRow
                 continue;
             }
-            try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(key.getTableName())) {
+            try (HaeinsaTableIfaceInternal table = getManager().getTable(key.getTableName())) {
                 table.checkSingleRowLock(rowTx, key.getRow());
             }
         }
@@ -302,7 +301,7 @@ public class HaeinsaTransaction {
         // check primary last
         HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
         HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
-        try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+        try (HaeinsaTableIfaceInternal table = getManager().getTable(primary.getTableName())) {
             table.checkSingleRowLock(primaryRowState, primary.getRow());
         }
         // do not need stable-phase
@@ -316,9 +315,8 @@ public class HaeinsaTransaction {
         HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
         HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
 
-        HaeinsaTablePool tablePool = getManager().getTablePool();
         // commit primary row
-        try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+        try (HaeinsaTableIfaceInternal table = getManager().getTable(primary.getTableName())) {
             table.commitSingleRowPutOnly(primaryRowState, primary.getRow());
         }
     }
@@ -334,9 +332,8 @@ public class HaeinsaTransaction {
         HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
         HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
 
-        HaeinsaTablePool tablePool = getManager().getTablePool();
         // prewrite primary row (mutation row)
-        try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+        try (HaeinsaTableIfaceInternal table = getManager().getTable(primary.getTableName())) {
             table.prewrite(primaryRowState, primary.getRow(), true);
         }
 
@@ -349,7 +346,7 @@ public class HaeinsaTransaction {
                 // if this is primaryRow
                 continue;
             }
-            try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(key.getTableName())) {
+            try (HaeinsaTableIfaceInternal table = getManager().getTable(key.getTableName())) {
                 table.prewrite(rowTx, key.getRow(), false);
             }
         }
@@ -358,7 +355,7 @@ public class HaeinsaTransaction {
         for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getReadOnlyRowStates().entrySet()) {
             TRowKey rowKey = rowKeyStateEntry.getKey();
             HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
-            try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(rowKey.getTableName())) {
+            try (HaeinsaTableIfaceInternal table = getManager().getTable(rowKey.getTableName())) {
                 table.checkSingleRowLock(rowTx, rowKey.getRow());
             }
         }
@@ -381,11 +378,10 @@ public class HaeinsaTransaction {
     private void makeStable() throws IOException {
         extendExpiry();
 
-        HaeinsaTablePool tablePool = getManager().getTablePool();
         HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName())
                 .createOrGetRowState(primary.getRow());
         // commit primary or get more time to commit this.
-        try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+        try (HaeinsaTableIfaceInternal table = getManager().getTable(primary.getTableName())) {
             // commitPrimary can be happened two times, this is because recovering client need to
             // extend expiry during recovering.
             table.commitPrimary(primaryRowTx, primary.getRow());
@@ -396,7 +392,7 @@ public class HaeinsaTransaction {
             for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getMutationRowStates().entrySet()) {
                 TRowKey rowKey = rowKeyStateEntry.getKey();
                 HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
-                try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(rowKey.getTableName())) {
+                try (HaeinsaTableIfaceInternal table = getManager().getTable(rowKey.getTableName())) {
                     table.applyMutations(rowTx, rowKey.getRow());
                     if (Bytes.equals(rowKey.getTableName(), primary.getTableName())
                             && Bytes.equals(rowKey.getRow(), primary.getRow())) {
@@ -409,7 +405,7 @@ public class HaeinsaTransaction {
             }
 
             // make primary row stable
-            try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+            try (HaeinsaTableIfaceInternal table = getManager().getTable(primary.getTableName())) {
                 table.makeStable(primaryRowTx, primary.getRow());
             }
         } catch (RecoverableConflictException e) {
@@ -483,10 +479,9 @@ public class HaeinsaTransaction {
             return;
         }
 
-        HaeinsaTablePool tablePool = getManager().getTablePool();
         HaeinsaRowTransaction primaryRowTx = createOrGetTableState(primary.getTableName()).createOrGetRowState(primary.getRow());
         // abort primary row
-        try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+        try (HaeinsaTableIfaceInternal table = getManager().getTable(primary.getTableName())) {
             table.abortPrimary(primaryRowTx, primary.getRow());
         }
 
@@ -494,7 +489,7 @@ public class HaeinsaTransaction {
         for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getMutationRowStates().entrySet()) {
             TRowKey rowKey = rowKeyStateEntry.getKey();
             HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
-            try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(rowKey.getTableName())) {
+            try (HaeinsaTableIfaceInternal table = getManager().getTable(rowKey.getTableName())) {
                 table.deletePrewritten(rowTx, rowKey.getRow());
 
                 if (Bytes.equals(rowKey.getTableName(), primary.getTableName())
@@ -507,7 +502,7 @@ public class HaeinsaTransaction {
         }
 
         // make primary row stable
-        try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(primary.getTableName())) {
+        try (HaeinsaTableIfaceInternal table = getManager().getTable(primary.getTableName())) {
             table.makeStable(primaryRowTx, primary.getRow());
         }
     }

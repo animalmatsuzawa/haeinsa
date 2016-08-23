@@ -27,25 +27,27 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import com.google.common.base.Objects;
+import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Connection;
 
 /**
  * Manager class of {@link HaeinsaTransaction}.
- * This class contains {@link HaeinsaTablePool} inside to provide tablePool when user want to access
+ * This class contains {@link Connection} inside to provide tablePool when user want to access
  * HBase through {@link HaeinsaTransaction} with {@link HaeinsaTable} and execute transaction.
  * <p>
  * HaeinsaTransactionManager also provides method to recover failed transaction from TRowLock in HBase
  * which can be used to clear it up or complete it.
  */
 public class HaeinsaTransactionManager {
-    private final HaeinsaTablePool tablePool;
+    private final Connection connection;
 
     /**
      * Constructor for TransactionManager
      *
-     * @param tablePool HaeinsaTablePool to access HBase.
+     * @param connection Connection to access HBase.
      */
-    public HaeinsaTransactionManager(HaeinsaTablePool tablePool) {
-        this.tablePool = tablePool;
+    public HaeinsaTransactionManager(Connection connection) {
+        this.connection = connection;
     }
 
     /**
@@ -129,7 +131,7 @@ public class HaeinsaTransactionManager {
      */
     private TRowLock getRowLock(byte[] tableName, byte[] row) throws IOException {
         TRowLock rowLock = null;
-        try (HaeinsaTableIfaceInternal table = tablePool.getTableInternal(tableName)) {
+        try (HaeinsaTableIfaceInternal table = getTable(tableName)) {
             // access to HBase
             rowLock = table.getRowLock(row);
         }
@@ -219,9 +221,24 @@ public class HaeinsaTransactionManager {
     }
 
     /**
-     * @return HaeinsaTablePool contained in TransactionManager
+     * @return HaeinsaTable instance contained in TransactionManager
      */
-    public HaeinsaTablePool getTablePool() {
-        return tablePool;
+    public HaeinsaTable getTable(final String tableName) {
+        try {
+            return new HaeinsaTable(this.connection.getTable(TableName.valueOf(tableName)));
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
+    /**
+     * @return HaeinsaTable instance contained in TransactionManager
+     */
+    public HaeinsaTable getTable(final byte[] tableName) {
+        try {
+            return new HaeinsaTable(this.connection.getTable(TableName.valueOf(tableName)));
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
     }
 }
