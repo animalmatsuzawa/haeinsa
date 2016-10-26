@@ -50,12 +50,12 @@ public class Haeinsa67BugTest extends HaeinsaTestBase {
                     .setExpiry(1380504160000L);
             primaryRowLock.addToSecondaries(secondaryRowKey);
             Put primaryPut = new Put(primaryRowKey.getRow());
-            primaryPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
+            primaryPut.addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
                     primaryRowLock.getCurrentTimestamp(), TRowLocks.serialize(primaryRowLock));
             hTestTable.put(primaryPut);
 
             Put secondaryPut = new Put(secondaryRowKey.getRow());
-            secondaryPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
+            secondaryPut.addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
                     secondaryRowLock.getCommitTimestamp(), TRowLocks.serialize(secondaryRowLock));
             hTestTable.put(secondaryPut);
 

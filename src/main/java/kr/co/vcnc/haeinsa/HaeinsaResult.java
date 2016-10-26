@@ -18,6 +18,7 @@ package kr.co.vcnc.haeinsa;
 import java.util.Collections;
 import java.util.List;
 
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.client.Result;
 
@@ -97,10 +98,10 @@ public class HaeinsaResult {
         List<HaeinsaKeyValue> sorted = Collections.emptyList();
         if (!result.isEmpty()) {
             sorted = Lists.transform(
-              result.list(),
-              new Function<KeyValue, HaeinsaKeyValue>() {
+              result.listCells(),
+              new Function<Cell, HaeinsaKeyValue>() {
                   @Override
-                  public HaeinsaKeyValue apply(KeyValue kv) {
+                  public HaeinsaKeyValue apply(Cell kv) {
                       return new HaeinsaKeyValue(kv);
                   }
               });

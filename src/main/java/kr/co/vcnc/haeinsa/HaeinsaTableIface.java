@@ -62,6 +62,30 @@ public interface HaeinsaTableIface extends Closeable {
      *
      * @param tx HaeinsaTransaction which this operation is participated in.
      * It can be null if user don't want to execute get inside transaction.
+     * @param gets The list of objects that specify what data to fetch and from which row.
+     * @return The list of results with data coming from the specified row, if it exists.
+     * If the row specified doesn't exist, the {@link HaeinsaResult} instance returned
+     * won't contain any {@link HaeinsaKeyValue}, as indicated by {@link HaeinsaResult#isEmpty()}.
+     * @throws IOException if a remote or network exception occurs.
+     */
+    default HaeinsaResult[] get(@Nullable HaeinsaTransaction tx, List<HaeinsaGet> gets) throws IOException {
+        if (gets.isEmpty()) {
+            return null;
+        }
+
+        final HaeinsaResult[] results = new HaeinsaResult[gets.size()];
+        for (int ix = 0; ix < gets.size(); ix++) {
+            results[ix] = get(tx, gets.get(ix));
+        }
+
+        return results;
+    }
+
+    /**
+     * Extracts certain cells from a given row.
+     *
+     * @param tx HaeinsaTransaction which this operation is participated in.
+     * It can be null if user don't want to execute get inside transaction.
      * @param get The object that specifies what data to fetch and from which row.
      * @return The data coming from the specified row, if it exists. If the row
      * specified doesn't exist, the {@link HaeinsaResult} instance returned

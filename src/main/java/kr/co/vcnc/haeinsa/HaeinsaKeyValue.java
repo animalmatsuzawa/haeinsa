@@ -15,10 +15,12 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import java.util.Arrays;
 import java.util.Comparator;
 
 import kr.co.vcnc.haeinsa.utils.NullableComparator;
 
+import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
 import org.apache.hadoop.hbase.KeyValue.Type;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -62,9 +64,12 @@ public class HaeinsaKeyValue {
     public HaeinsaKeyValue() {
     }
 
-    public HaeinsaKeyValue(KeyValue keyValue) {
-        this(keyValue.getRow(), keyValue.getFamily(), keyValue.getQualifier(), keyValue.getValue(),
-                KeyValue.Type.codeToType(keyValue.getType()));
+    public HaeinsaKeyValue(Cell keyValue) {
+        this(Arrays.copyOfRange(keyValue.getRowArray(), keyValue.getRowOffset(), keyValue.getRowOffset() + keyValue.getRowLength()),
+            Arrays.copyOfRange(keyValue.getFamilyArray(), keyValue.getFamilyOffset(), keyValue.getFamilyOffset() + keyValue.getFamilyLength()),
+            Arrays.copyOfRange(keyValue.getQualifierArray(), keyValue.getQualifierOffset(), keyValue.getQualifierOffset() + keyValue.getQualifierLength()),
+            Arrays.copyOfRange(keyValue.getValueArray(), keyValue.getValueOffset(), keyValue.getValueOffset() + keyValue.getValueLength()),
+            KeyValue.Type.codeToType(keyValue.getTypeByte()));
     }
 
     public HaeinsaKeyValue(byte[] row, byte[] family, byte[] qualifier, byte[] value, Type type) {

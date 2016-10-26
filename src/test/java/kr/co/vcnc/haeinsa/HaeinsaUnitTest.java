@@ -19,6 +19,8 @@ import static kr.co.vcnc.haeinsa.TestingUtility.checkLockChanged;
 import static kr.co.vcnc.haeinsa.TestingUtility.getLock;
 
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
 import kr.co.vcnc.haeinsa.exception.DanglingRowLockException;
@@ -771,6 +773,121 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         testTable.close();
     }
 
+    @Test
+    public void testMultipleMutationsWithMultiGet() throws Exception {
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+
+        /*
+         * - beginTransaction
+         * 1. put { row-abc, data, column-a }
+         * 2. put { row-abc, data, column-b }
+         * 3. put { row-d, meta, column-d }
+         * - commit
+         */
+        HaeinsaTransaction tx = tm.begin();
+        HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("row-abc"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("column-a"), Bytes.toBytes("value-a"));
+        testTable.put(tx, put);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-abc"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("column-b"), Bytes.toBytes("value-b"));
+        testTable.put(tx, put);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-d"));
+        put.add(Bytes.toBytes("meta"), Bytes.toBytes("column-d"), Bytes.toBytes("value-d"));
+        testTable.put(tx, put);
+
+        tx.commit();
+
+        /*
+         * - beginTransaction
+         * 4. put { row-abc, data, column-c }
+         * 5. put { row-e, meta, column-e }
+         * 6. deleteFamily { row-abc, data }
+         * 7. put { row-abc, data, col-after }
+         * 8. delete { row-e, meta, {column-j & column-e} }
+         * 9. put { row-e, meta, column-j }
+         * - commit
+         */
+        tx = tm.begin();
+        put = new HaeinsaPut(Bytes.toBytes("row-abc"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("column-c"), Bytes.toBytes("value-c"));
+        testTable.put(tx, put);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-e"));
+        put.add(Bytes.toBytes("meta"), Bytes.toBytes("column-e"), Bytes.toBytes("value-e"));
+        testTable.put(tx, put);
+
+        HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("row-abc"));
+        delete.deleteFamily(Bytes.toBytes("data"));
+        testTable.delete(tx, delete);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-abc"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("col-after"), Bytes.toBytes("value-after"));
+        testTable.put(tx, put);
+
+        delete = new HaeinsaDelete(Bytes.toBytes("row-e"));
+        delete.deleteColumns(Bytes.toBytes("meta"), Bytes.toBytes("column-j"));
+        delete.deleteColumns(Bytes.toBytes("meta"), Bytes.toBytes("column-e"));
+        testTable.delete(tx, delete);
+
+        put = new HaeinsaPut(Bytes.toBytes("row-e"));
+        put.add(Bytes.toBytes("meta"), Bytes.toBytes("column-j"), Bytes.toBytes("value-j"));
+        testTable.put(tx, put);
+
+        tx.commit();
+
+        /*
+         * Check the result. There should be data added by 3, 5, 9 operations.
+         * Other data was deleted.
+         * 3. put { row-d, meta, column-d }
+         * 7. put { row-abc, data, col-after } (There should be unique column for row-abc)
+         * 9. put { row-e, meta, column-j }
+         */
+        tx = tm.begin();
+
+        final List<HaeinsaGet> gets = new LinkedList<>();
+
+        HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("row-d"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-d"));
+        gets.add(get);
+
+        get = new HaeinsaGet(Bytes.toBytes("row-abc"));
+        gets.add(get);
+
+        get = new HaeinsaGet(Bytes.toBytes("row-e"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-j"));
+        gets.add(get);
+
+        get = new HaeinsaGet(Bytes.toBytes("row-abc"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-a"));
+        gets.add(get);
+
+        get = new HaeinsaGet(Bytes.toBytes("row-abc"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-b"));
+        gets.add(get);
+
+        get = new HaeinsaGet(Bytes.toBytes("row-e"));
+        get.addColumn(Bytes.toBytes("meta"), Bytes.toBytes("column-e"));
+        gets.add(get);
+
+        HaeinsaResult[] results = testTable.get(tx, gets);
+        Assert.assertEquals(results[0].getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-d")),
+            Bytes.toBytes("value-d"));
+        Assert.assertEquals(results[1].list().size(), 1);
+        Assert.assertEquals(results[1].getValue(Bytes.toBytes("data"), Bytes.toBytes("col-after")),
+            Bytes.toBytes("value-after"));
+        Assert.assertEquals(results[2].getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-j")),
+            Bytes.toBytes("value-j"));
+        Assert.assertNull(results[3].getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-a")));
+        Assert.assertNull(results[4].getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-b")));
+        Assert.assertNull(results[5].getValue(Bytes.toBytes("meta"), Bytes.toBytes("column-e")));
+
+        tx.rollback();
+
+        testTable.close();
+    }
     /**
      * Unit test for check get/scan without transaction.
      */
@@ -931,7 +1048,7 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
                     .setPrimary(primaryRowKey);
 
             Put hPut = new Put(danglingRowKey.getRow());
-            hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
+            hPut.addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
                     danglingRowLock.getCurrentTimestamp(), TRowLocks.serialize(danglingRowLock));
             hTestTable.put(hPut);
 
@@ -957,12 +1074,12 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
                     .setPrimary(primaryRowKey);
 
             Put hPut = new Put(danglingRowKey.getRow());
-            hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
+            hPut.addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
                     danglingRowLock.getCurrentTimestamp(), TRowLocks.serialize(danglingRowLock));
             hTestTable.put(hPut);
 
             hPut = new Put(primaryRowKey.getRow());
-            hPut.add(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
+            hPut.addColumn(HaeinsaConstants.LOCK_FAMILY, HaeinsaConstants.LOCK_QUALIFIER,
                     primaryRowLock.getCommitTimestamp(), TRowLocks.serialize(primaryRowLock));
             hTestTable.put(hPut);
 

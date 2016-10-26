@@ -16,6 +16,7 @@
 package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -83,6 +84,60 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
         HaeinsaGet get = new HaeinsaGet(row);
         get.addColumn(CF, CQ);
         long countOnDB = Bytes.toLong(testTable.get(tx, get).getValue(CF, CQ));
+        tx.rollback();
+
+        Assert.assertEquals(countOnDB, maxIter);
+        Assert.assertEquals(count.get(), maxIter);
+
+        testTable.close();
+    }
+
+    /**
+     * Test which executes multiple transactions which increment specific value by single thread and check result using multiGet.
+     */
+    @Test
+    public void testSimpleIncrementWithMultiGet() throws Exception {
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+
+        HaeinsaTransaction tx;
+
+        final AtomicLong count = new AtomicLong(0);
+        final long maxIter = 1000;
+
+        // initial value
+        final byte[] row = Bytes.toBytes("count");
+        final byte[] CF = Bytes.toBytes("data");
+        final byte[] CQ = Bytes.toBytes("value");
+
+        tx = tm.begin();
+        HaeinsaPut put = new HaeinsaPut(row);
+        put.add(CF, CQ, Bytes.toBytes(0L));
+        testTable.put(tx, put);
+        tx.commit();
+
+        for (int i = 0; i < maxIter; i++) {
+            try {
+                tx = tm.begin();
+                HaeinsaGet get = new HaeinsaGet(row);
+                get.addColumn(CF, CQ);
+                long countOnDB = Bytes.toLong(testTable.get(tx, Collections.singletonList(get))[0].getValue(CF, CQ));
+                put = new HaeinsaPut(row);
+                countOnDB += 1;
+                put.add(CF, CQ, Bytes.toBytes(countOnDB));
+                testTable.put(tx, put);
+                tx.commit();
+                count.addAndGet(1L);
+            } catch (IOException e) {
+                // IOException on HBase operations
+            }
+        }
+
+        // check result
+        tx = tm.begin();
+        HaeinsaGet get = new HaeinsaGet(row);
+        get.addColumn(CF, CQ);
+        long countOnDB = Bytes.toLong(testTable.get(tx, Collections.singletonList(get))[0].getValue(CF, CQ));
         tx.rollback();
 
         Assert.assertEquals(countOnDB, maxIter);
