@@ -19,6 +19,10 @@ import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+
 public class WithoutTransactionTest extends HaeinsaTestBase {
 
     @Test
@@ -71,6 +75,86 @@ public class WithoutTransactionTest extends HaeinsaTestBase {
             Assert.assertEquals(result.containsColumn(family, col2), true);
             Assert.assertEquals(value1, Bytes.toBytes("value1"));
             Assert.assertEquals(value2, Bytes.toBytes("value2"));
+        }
+    }
+
+    @Test
+    public void testMultiGet() throws Exception {
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+
+        byte[] row = Bytes.toBytes("row");
+        byte[] row2 = Bytes.toBytes("row2");
+        byte[] family = Bytes.toBytes("data");
+        byte[] col1 = Bytes.toBytes("col1");
+        byte[] col2 = Bytes.toBytes("col2");
+
+        // Insert data wih transaction
+        {
+            HaeinsaTransaction tx = tm.begin();
+            HaeinsaPut put = new HaeinsaPut(row);
+            put.add(family, col1, Bytes.toBytes("value1"));
+            testTable.put(tx, put);
+            put = new HaeinsaPut(row);
+            put.add(family, col2, Bytes.toBytes("value2"));
+            testTable.put(tx, put);
+            put = new HaeinsaPut(row2);
+            put.add(family, col1, Bytes.toBytes("value1"));
+            testTable.put(tx, put);
+            put = new HaeinsaPut(row2);
+            put.add(family, col2, Bytes.toBytes("value2"));
+            testTable.put(tx, put);
+            tx.commit();
+        }
+        // Get with transaction
+        {
+            HaeinsaTransaction tx = tm.begin();
+            HaeinsaGet get = new HaeinsaGet(row);
+            get.addFamily(family);
+            HaeinsaGet get2 = new HaeinsaGet(row2);
+            get2.addFamily(family);
+            final List<HaeinsaGet> gets = new LinkedList<>();
+            gets.add(get);
+            gets.add(get2);
+            HaeinsaResult[] results = testTable.get(tx, gets);
+            tx.commit();
+
+            byte[] value1 = results[0].getValue(family, col1);
+            byte[] value2 = results[0].getValue(family, col2);
+            byte[] value3 = results[1].getValue(family, col1);
+            byte[] value4 = results[1].getValue(family, col2);
+
+            Assert.assertEquals(results[0].containsColumn(family, col1), true);
+            Assert.assertEquals(results[0].containsColumn(family, col2), true);
+            Assert.assertEquals(results[1].containsColumn(family, col1), true);
+            Assert.assertEquals(results[1].containsColumn(family, col2), true);
+            Assert.assertEquals(value3, Bytes.toBytes("value1"));
+            Assert.assertEquals(value4, Bytes.toBytes("value2"));
+        }
+        // Get without transaction
+        {
+            HaeinsaGet get = new HaeinsaGet(row);
+            get.addFamily(family);
+            HaeinsaGet get2 = new HaeinsaGet(row2);
+            get2.addFamily(family);
+            final List<HaeinsaGet> gets = new LinkedList<>();
+            gets.add(get);
+            gets.add(get2);
+            HaeinsaResult[] results = testTable.get(null, gets);
+
+            byte[] value1 = results[0].getValue(family, col1);
+            byte[] value2 = results[0].getValue(family, col2);
+            byte[] value3 = results[1].getValue(family, col1);
+            byte[] value4 = results[1].getValue(family, col2);
+
+            Assert.assertEquals(results[0].containsColumn(family, col1), true);
+            Assert.assertEquals(results[0].containsColumn(family, col2), true);
+            Assert.assertEquals(results[1].containsColumn(family, col1), true);
+            Assert.assertEquals(results[1].containsColumn(family, col2), true);
+            Assert.assertEquals(value1, Bytes.toBytes("value1"));
+            Assert.assertEquals(value2, Bytes.toBytes("value2"));
+            Assert.assertEquals(value3, Bytes.toBytes("value1"));
+            Assert.assertEquals(value4, Bytes.toBytes("value2"));
         }
     }
 }

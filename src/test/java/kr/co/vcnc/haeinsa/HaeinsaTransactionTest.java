@@ -15,6 +15,9 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import kr.co.vcnc.haeinsa.thrift.TRowLocks;
@@ -48,6 +51,12 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
             HaeinsaGet get2 = new HaeinsaGet(Bytes.toBytes("row2"));
             get2.addColumn(Bytes.toBytes("data"), Bytes.toBytes("qualifier"));
             table.get(tx, get2);
+
+            final List<HaeinsaGet> gets = new LinkedList<>();
+            gets.add(get1);
+            gets.add(get2);
+            table.get(tx, gets);
+
             Assert.assertFalse(tx.hasChanges());
         }
 
@@ -59,6 +68,7 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
             HaeinsaGet get1 = new HaeinsaGet(Bytes.toBytes("row1"));
             get1.addColumn(Bytes.toBytes("data"), Bytes.toBytes("qualifier"));
             table.get(tx, get1);
+            table.get(tx, Collections.singletonList(get1));
             Assert.assertFalse(tx.hasChanges());
 
             HaeinsaPut put1 = new HaeinsaPut(Bytes.toBytes("row1"));
@@ -75,6 +85,7 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
             HaeinsaGet get1 = new HaeinsaGet(Bytes.toBytes("row1"));
             get1.addColumn(Bytes.toBytes("data"), Bytes.toBytes("qualifier"));
             table.get(tx, get1);
+            table.get(tx, Collections.singletonList(get1));
             Assert.assertFalse(tx.hasChanges());
 
             HaeinsaDelete delete1 = new HaeinsaDelete(Bytes.toBytes("row1"));
