@@ -188,6 +188,8 @@
                             <failOnViolation>true</failOnViolation>
                             <configLocation>checkstyle.xml</configLocation>
                             <includeTestSourceDirectory>true</includeTestSourceDirectory>
+                            <suppressionsLocation>checkstyle-suppressions.xml</suppressionsLocation>
+                            <suppressionsFileExpression>checkstyle.suppressions.file</suppressionsFileExpression>
                         </configuration>
                     </execution>
                 </executions>
@@ -318,7 +320,7 @@
                                     <pluginExecutionFilter>
                                         <groupId>org.apache.maven.plugins</groupId>
                                         <artifactId>maven-checkstyle-plugin</artifactId>
-                                        <versionRange>[0.1.10,)</versionRange>
+                                        <versionRange>[0.1.11,)</versionRange>
                                         <goals>
                                             <goal>check</goal>
                                         </goals>
