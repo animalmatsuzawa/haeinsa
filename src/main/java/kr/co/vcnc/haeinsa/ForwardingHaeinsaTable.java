@@ -110,6 +110,11 @@ public class ForwardingHaeinsaTable extends ForwardingObject implements HaeinsaT
     }
 
     @Override
+    public HaeinsaResult[] get(@Nullable HaeinsaTransaction tx, List<HaeinsaGet> gets) throws IOException {
+        return delegate().get(tx, gets);
+    }
+
+    @Override
     public HaeinsaResultScanner getScanner(@Nullable HaeinsaTransaction tx, byte[] family) throws IOException {
         return delegate().getScanner(tx, family);
     }

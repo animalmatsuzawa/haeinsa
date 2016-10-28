@@ -68,18 +68,7 @@ public interface HaeinsaTableIface extends Closeable {
      * won't contain any {@link HaeinsaKeyValue}, as indicated by {@link HaeinsaResult#isEmpty()}.
      * @throws IOException if a remote or network exception occurs.
      */
-    default HaeinsaResult[] get(@Nullable HaeinsaTransaction tx, List<HaeinsaGet> gets) throws IOException {
-        if (gets.isEmpty()) {
-            return null;
-        }
-
-        final HaeinsaResult[] results = new HaeinsaResult[gets.size()];
-        for (int ix = 0; ix < gets.size(); ix++) {
-            results[ix] = get(tx, gets.get(ix));
-        }
-
-        return results;
-    }
+    HaeinsaResult[] get(@Nullable HaeinsaTransaction tx, List<HaeinsaGet> gets) throws IOException;
 
     /**
      * Extracts certain cells from a given row.
