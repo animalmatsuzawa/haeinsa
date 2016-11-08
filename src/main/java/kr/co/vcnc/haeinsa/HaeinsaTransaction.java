@@ -73,6 +73,11 @@ public class HaeinsaTransaction {
          */
         SINGLE_ROW_PUT_ONLY,
         /**
+         * If there is only one rowTx and type of its mutation is HaeinsaDelete and
+         * there is no column family (delete all)
+         */
+        SINGLE_ROW_DELETE_ALL_ONLY,
+        /**
          * When there is multiple rowTx and at least one of that include mutation,
          * or there is only one rowTx and its mutation contains HaeinsaDelete.
          */
@@ -250,26 +255,34 @@ public class HaeinsaTransaction {
         // Than determineCommitMethod whill return NOTHING.
         setPrimary(primaryRowKey);
 
+        // Can't delete entire row in Haeinsa because of lock column, unless it is the only mutation
+        // on a single row. Please specify column families when needed.
+        Preconditions.checkArgument(txStates.deleteAllOnlyIfSingleRowSingleMutation(),
+            "Delete all is only allowed if it is the only mutation on a single row");
         CommitMethod method = txStates.determineCommitMethod();
         switch (method) {
-        case READ_ONLY: {
-            commitReadOnly();
-            break;
-        }
-        case SINGLE_ROW_PUT_ONLY: {
-            commitSingleRowPutOnly();
-            break;
-        }
-        case MULTI_ROW_MUTATIONS: {
-            commitMultiRowsMutation();
-            break;
-        }
-        case NOTHING: {
-            break;
-        }
-        default: {
-            break;
-        }
+            case READ_ONLY: {
+                commitReadOnly();
+                break;
+            }
+            case SINGLE_ROW_PUT_ONLY: {
+                commitSingleRowPutOnly();
+                break;
+            }
+            case SINGLE_ROW_DELETE_ALL_ONLY: {
+                commitSingleRowDeleteAllOnly();
+                break;
+            }
+            case MULTI_ROW_MUTATIONS: {
+                commitMultiRowsMutation();
+                break;
+            }
+            case NOTHING: {
+                break;
+            }
+            default: {
+                break;
+            }
         }
     }
 
@@ -318,6 +331,20 @@ public class HaeinsaTransaction {
         // commit primary row
         try (HaeinsaTableIfaceInternal table = getManager().getTable(primary.getTableName())) {
             table.commitSingleRowPutOnly(primaryRowState, primary.getRow());
+        }
+    }
+
+    /**
+     * Commit single row & DELETE all only (possibly include get/scan, but not any other mutation)
+     * Transaction.
+     */
+    private void commitSingleRowDeleteAllOnly() throws IOException {
+        HaeinsaTableTransaction primaryTableState = createOrGetTableState(primary.getTableName());
+        HaeinsaRowTransaction primaryRowState = primaryTableState.createOrGetRowState(primary.getRow());
+
+        // commit primary row
+        try (HaeinsaTableIfaceInternal table = getManager().getTable(primary.getTableName())) {
+            table.commitSingleRowDeleteAllOnly(primaryRowState, primary.getRow());
         }
     }
 
@@ -560,7 +587,8 @@ public class HaeinsaTransaction {
          * {@link CommitMethod#MULTI_ROW_MUTATIONS}
          * <p>
          * Transaction of single row with at least one of {@link HaeinsaDelete}
-         * will be considered as {@link CommitMethod#MULTI_ROW_MUTATIONS}.
+         * will be considered as {@link CommitMethod#MULTI_ROW_MUTATIONS} unless it
+         * is a delete all on a single row and there is no other mutation.
          */
         public CommitMethod determineCommitMethod() {
             int count = 0;
@@ -580,6 +608,10 @@ public class HaeinsaTransaction {
                         } else if (rowState.getMutations().get(0) instanceof HaeinsaPut
                                 && rowState.getMutations().size() == 1) {
                             method = CommitMethod.SINGLE_ROW_PUT_ONLY;
+                        } else if (rowState.getMutations().get(0) instanceof HaeinsaDelete
+                                && ((HaeinsaDelete) rowState.getMutations().get(0)).getFamilyMap().size() == 0
+                                && rowState.getMutations().size() == 1) {
+                            method = CommitMethod.SINGLE_ROW_DELETE_ALL_ONLY;
                         } else if (haveMuations) {
                             // if rowTx contiains HaeinsaDelete
                             method = CommitMethod.MULTI_ROW_MUTATIONS;
@@ -595,6 +627,48 @@ public class HaeinsaTransaction {
                 }
             }
             return method;
+        }
+
+        /**
+         * Determine if there is a delete all mutation, and check to make if so
+         * it is the only mutation on a single row
+         */
+        public boolean deleteAllOnlyIfSingleRowSingleMutation() {
+            int count = 0;
+            int mutationCount = 0;
+            boolean haveDeleteAll = false;
+            for (HaeinsaTableTransaction tableState : tableStates.values()) {
+                count++;
+                for (HaeinsaRowTransaction rowState : tableState.getRowStates().values()) {
+                    mutationCount += rowState.getMutations().size();
+                    if ((mutationCount > 1 || count > 1) && haveDeleteAll) {
+                        return false;
+                    }
+                    for (HaeinsaMutation mutation : rowState.getMutations()) {
+                        if (mutation instanceof HaeinsaDelete &&
+                            ((HaeinsaDelete) mutation).getFamilyMap().size() == 0) {
+                            haveDeleteAll = true;
+                        }
+
+                        if ((mutationCount > 1 || count > 1) && haveDeleteAll) {
+                            return false;
+                        }
+                    }
+                    if ((mutationCount > 1 || count > 1) && haveDeleteAll) {
+                        return false;
+                    }
+                }
+
+                if ((mutationCount > 1 || count > 1) && haveDeleteAll) {
+                    return false;
+                }
+            }
+
+            if ((mutationCount > 1 || count > 1) && haveDeleteAll) {
+                return false;
+            }
+
+            return true;
         }
 
         /**

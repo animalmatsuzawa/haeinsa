@@ -27,6 +27,10 @@ This transaction put some data on specific row and then get data from same row:
 	
 	tx.commit(); // commit transaction to HBase
 
+The library also supports a HaeinsaTable.get API that takes a list of HaiensaGet's
+and the implementation is faster if your application can us that API, as opposed to
+doing each HaeinsaGet sequentially.
+
 ### Put
 
 Haeinsa provides transaction on Put operation.
@@ -74,6 +78,12 @@ This transaction get data from specific row and then, delete the data:
 	table.delete(tx, delete);
 
 	tx.commit(); // commit transaction to HBase
+
+Because of the need to coordinate trasactions across rows, delete of an entire
+row (including the lock column used by Haeinsa, indicated by a HaeinsaDelete instance with
+no column family) is only allowed if it is the only mutation in the transaction and there
+is no other row involved in the transaction. If your delete meets these conditions, there
+is an optimization that saves extra operations in the implementation.
 
 ### Intra-row scan
 

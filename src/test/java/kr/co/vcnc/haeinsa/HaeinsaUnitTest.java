@@ -31,6 +31,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.hadoop.hbase.client.Put;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.exceptions.IllegalArgumentIOException;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.testng.Assert;
 import org.testng.annotations.Test;
@@ -349,6 +350,83 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         scanner.close();
 
         testTable.close();
+    }
+
+    @Test
+    public void testSingleRowDeleteAll() throws Exception {
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+
+        HaeinsaTransaction tx = tm.begin();
+
+        HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678+1"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("email"), Bytes.toBytes("ymkim+1@vcnc.co.kr"));
+        put.add(Bytes.toBytes("data"), Bytes.toBytes("name"), Bytes.toBytes("Youngmok Kim+1"));
+        testTable.put(tx, put);
+
+        tx.commit();
+
+        tx = tm.begin();
+
+        HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("ymkim"));
+        testTable.delete(tx, delete);
+
+        tx.commit();
+
+        tx = tm.begin();
+        HaeinsaGet get = new HaeinsaGet(Bytes.toBytes("ymkim"));
+        HaeinsaResult result = testTable.get(tx, get);
+        Assert.assertTrue(result.isEmpty());
+        tx.rollback();
+
+        testTable.close();
+    }
+
+    @Test
+    public void testSingleRowDeleteAllAndPutShouldFail() throws Exception {
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+
+        try {
+        HaeinsaTransaction tx = tm.begin();
+
+            HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+            put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678+1"));
+            put.add(Bytes.toBytes("data"), Bytes.toBytes("email"), Bytes.toBytes("ymkim+1@vcnc.co.kr"));
+            put.add(Bytes.toBytes("data"), Bytes.toBytes("name"), Bytes.toBytes("Youngmok Kim+1"));
+            testTable.put(tx, put);
+            HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("ymkim"));
+            testTable.delete(tx, delete);
+
+            tx.commit();
+            Assert.fail("Trying to have a delete all on a row is not allowed with any other mutation, should fail");
+        } catch (IllegalArgumentException ex) {
+            System.out.println("Success");
+        }
+    }
+
+    @Test
+    public void testMultipleRowDeleteAllAndPutShouldFail() throws Exception {
+        final HaeinsaTransactionManager tm = context().getTransactionManager();
+        final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
+
+        try {
+            HaeinsaTransaction tx = tm.begin();
+
+            HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("ymkim"));
+            put.add(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber"), Bytes.toBytes("010-1234-5678+1"));
+            put.add(Bytes.toBytes("data"), Bytes.toBytes("email"), Bytes.toBytes("ymkim+1@vcnc.co.kr"));
+            put.add(Bytes.toBytes("data"), Bytes.toBytes("name"), Bytes.toBytes("Youngmok Kim+1"));
+            testTable.put(tx, put);
+            HaeinsaDelete delete = new HaeinsaDelete(Bytes.toBytes("ymkim2"));
+            testTable.delete(tx, delete);
+
+            tx.commit();
+            Assert.fail("Trying to have a delete all on a row is not allowed with any other mutation, should fail");
+        } catch (IllegalArgumentException ex) {
+            System.out.println("Success");
+        }
     }
 
     @Test

@@ -25,7 +25,7 @@
 
     <groupId>kr.co.vcnc.haeinsa</groupId>
     <artifactId>haeinsa</artifactId>
-    <version>1.0.6-aol</version>
+    <version>1.0.7-aol-snapshot</version>
     <packaging>jar</packaging>
 
     <name>haeinsa</name>

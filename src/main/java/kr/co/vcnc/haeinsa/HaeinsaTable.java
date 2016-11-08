@@ -481,6 +481,13 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
             // TODO(improvement) : Should consider to get lock when commit() called.
             rowState = checkOrRecoverLock(tx, row, tableState, rowState);
         }
+
+        Preconditions.checkArgument(rowState.getMutations().size() == 0 ||
+            rowState.getMutations().size() > 1 ||
+            !(rowState.getMutations().get(0) instanceof HaeinsaDelete) ||
+            rowState.getMutations().get(0).getFamilyMap().size() != 0,
+            "Delete of full row only allow if it is the only mutation on a single row");
+
         rowState.addMutation(put);
     }
 
@@ -583,14 +590,20 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         Preconditions.checkNotNull(delete);
 
         byte[] row = delete.getRow();
-        // Can't delete entire row in Haeinsa because of lock column. Please specify column families when needed.
-        Preconditions.checkArgument(delete.getFamilyMap().size() > 0, "can't delete an entire row.");
         HaeinsaTableTransaction tableState = tx.createOrGetTableState(this.table.getName().getName());
         HaeinsaRowTransaction rowState = tableState.getRowStates().get(row);
         if (rowState == null) {
             // TODO(improvement) : Should consider to get lock when commit() called.
             rowState = checkOrRecoverLock(tx, row, tableState, rowState);
         }
+
+        Preconditions.checkArgument((delete.getFamilyMap().size() > 0 &&
+            (rowState.getMutations().size() == 0 || rowState.getMutations().size() > 1 ||
+                !(rowState.getMutations().get(0) instanceof HaeinsaDelete) ||
+                rowState.getMutations().get(0).getFamilyMap().size() != 0)) ||
+            (delete.getFamilyMap().size() == 0 && rowState.getMutations().size() == 0),
+                "Delete of full row only allow if it is the only mutation on a single row");
+
         rowState.addMutation(delete);
     }
 
@@ -625,6 +638,22 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
             throw new ConflictException("can't acquire row's lock, commitSingleRowPutOnly failed");
         } else {
             rowState.setCurrent(newRowLock);
+        }
+    }
+
+    @Override
+    public void commitSingleRowDeleteAllOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
+        HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
+        Delete delete = new Delete(row);
+        HaeinsaDelete haeinsaDelete = (HaeinsaDelete) rowState.getMutations().remove(0);
+        Preconditions.checkArgument(haeinsaDelete.getFamilyMap().size() == 0,
+            "commitSingleRowDeleteAllOnly can only be called if there is a single mutation on a single row deleting the entire row");
+
+        byte[] currentRowLockBytes = TRowLocks.serialize(rowState.getCurrent());
+        if (!table.checkAndDelete(row, LOCK_FAMILY, LOCK_QUALIFIER, currentRowLockBytes, delete)) {
+            throw new ConflictException("can't acquire row's lock, commitSingleRowDeleteAllOnly failed");
+        } else {
+            rowState.setCurrent(null);
         }
     }
 
