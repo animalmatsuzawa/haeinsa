@@ -257,7 +257,7 @@ public class HaeinsaTransaction {
 
         // Can't delete entire row in Haeinsa because of lock column, unless it is the only mutation
         // on a single row. Please specify column families when needed.
-        Preconditions.checkArgument(txStates.deleteAllOnlyIfSingleRowSingleMutation(),
+        Preconditions.checkArgument(txStates.checkDeleteAllIfAnyForValidity(),
             "Delete all is only allowed if it is the only mutation on a single row");
         CommitMethod method = txStates.determineCommitMethod();
         switch (method) {
@@ -630,10 +630,13 @@ public class HaeinsaTransaction {
         }
 
         /**
-         * Determine if there is a delete all mutation, and check to make if so
-         * it is the only mutation on a single row
+         * Return true if
+         * a) there is no delete all transaction, or
+         * b) there is one but it is the only mutation
+         *    on a single row and there is no other row
+         *    involved in the transaction
          */
-        public boolean deleteAllOnlyIfSingleRowSingleMutation() {
+        public boolean checkDeleteAllIfAnyForValidity() {
             int count = 0;
             int mutationCount = 0;
             boolean haveDeleteAll = false;
