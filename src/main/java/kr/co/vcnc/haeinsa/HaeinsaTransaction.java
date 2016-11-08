@@ -17,6 +17,10 @@ package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.NavigableMap;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -29,6 +33,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
 import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -285,6 +290,7 @@ public class HaeinsaTransaction {
         Preconditions.checkState(txStates.getReadOnlyRowStates().size() > 0);
 
         // check secondaries
+        final Map<byte[], List<Pair<TRowKey, HaeinsaRowTransaction>>> tableToRowsMap = new HashMap<>();
         for (Entry<TRowKey, HaeinsaRowTransaction> rowKeyStateEntry : txStates.getReadOnlyRowStates().entrySet()) {
             TRowKey key = rowKeyStateEntry.getKey();
             HaeinsaRowTransaction rowTx = rowKeyStateEntry.getValue();
@@ -293,8 +299,24 @@ public class HaeinsaTransaction {
                 // if this is primaryRow
                 continue;
             }
-            try (HaeinsaTableIfaceInternal table = getManager().getTable(key.getTableName())) {
-                table.checkSingleRowLock(rowTx, key.getRow());
+
+            List<Pair<TRowKey, HaeinsaRowTransaction>> rows = tableToRowsMap.get(key.getTableName());
+            if (rows == null) {
+                rows = new LinkedList<>();
+                tableToRowsMap.put(key.getTableName(), rows);
+            }
+
+            rows.add(Pair.newPair(key, rowTx));
+        }
+
+        for (Entry<byte[], List<Pair<TRowKey, HaeinsaRowTransaction>>> tableToRowsEntry : tableToRowsMap.entrySet()) {
+            try (HaeinsaTableIfaceInternal table = getManager().getTable(tableToRowsEntry.getKey())) {
+                List<Pair<HaeinsaRowTransaction, byte[]>> rows = new LinkedList<>();
+                for (Pair<TRowKey, HaeinsaRowTransaction> row : tableToRowsEntry.getValue()) {
+                    rows.add(Pair.newPair(row.getSecond(), row.getFirst().getRow()));
+                }
+
+                table.checkMultipleRowLocks(rows);
             }
         }
 

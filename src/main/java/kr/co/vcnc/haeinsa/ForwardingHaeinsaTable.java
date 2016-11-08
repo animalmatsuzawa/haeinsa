@@ -15,18 +15,16 @@
  */
 package kr.co.vcnc.haeinsa;
 
-import java.io.IOException;
-import java.util.List;
-
-import javax.annotation.Nullable;
-
-import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hbase.HTableDescriptor;
-
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ForwardingObject;
+import kr.co.vcnc.haeinsa.thrift.generated.TRowLock;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hbase.HTableDescriptor;
+import org.apache.hadoop.hbase.util.Pair;
+
+import javax.annotation.Nullable;
+import java.io.IOException;
+import java.util.List;
 
 /**
  * Fowarding Object for HaeinsaTable
@@ -55,6 +53,11 @@ public class ForwardingHaeinsaTable extends ForwardingObject implements HaeinsaT
     }
 
     @Override
+    public void checkMultipleRowLocks(List<Pair<HaeinsaRowTransaction, byte[]>> rows) throws IOException {
+        delegate().checkMultipleRowLocks(rows);
+    }
+
+    @Override
     public void prewrite(HaeinsaRowTransaction rowState, byte[] row, boolean isPrimary) throws IOException {
         delegate().prewrite(rowState, row, isPrimary);
     }
@@ -77,6 +80,11 @@ public class ForwardingHaeinsaTable extends ForwardingObject implements HaeinsaT
     @Override
     public TRowLock getRowLock(byte[] row) throws IOException {
         return delegate().getRowLock(row);
+    }
+
+    @Override
+    public TRowLock[] getRowLocks(List<byte[]> rows) throws IOException {
+        return delegate().getRowLocks(rows);
     }
 
     @Override

@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -60,6 +62,7 @@ import org.apache.hadoop.hbase.client.Scan;
 import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.apache.hadoop.hbase.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -651,6 +654,42 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
         }
     }
 
+    /**
+     * Read {@link TRowLock} from HBase and compare that lock with prevRowLock.
+     * If TRowLock is changed, it means transaction is failed, so throw
+     * {@link ConflictException}.
+     *
+     * @throws IOException ConflictException, HBase IOException.
+     * @throws NullPointerException if oldLock is null (haven't read lock from HBase)
+     */
+    @Override
+    public void checkMultipleRowLocks(List<Pair<HaeinsaRowTransaction, byte[]>> rows) throws IOException {
+        List<byte[]> rowBytes = new LinkedList<>();
+        for (Pair<HaeinsaRowTransaction, byte[]> row : rows) {
+            rowBytes.add(row.getSecond());
+        }
+
+        TRowLock[] locks = getRowLocks(rowBytes);
+
+        int idx = 0;
+        for (Pair<HaeinsaRowTransaction, byte[]> row : rows) {
+            HaeinsaRowTransaction rowState = row.getFirst();
+            TRowLock currentRowLock = locks[idx];
+
+            if (!rowState.getCurrent().equals(currentRowLock)) {
+                HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
+                HaeinsaTransaction currentTx = tx.getManager().getTransaction(tx.getPrimary().getTableName(), tx.getPrimary().getRow());
+                if (currentTx != null) {
+                    if (HaeinsaTransactions.hasSameCommitTimestamp(tx, currentTx)) {
+                        currentTx.recover(true);
+                    }
+                }
+                throw new ConflictException("this row is modified, checkMultipleRowLocks failed");
+            }
+            idx++;
+        }
+    }
+
     @Override
     public void prewrite(HaeinsaRowTransaction rowState, byte[] row, boolean isPrimary) throws IOException {
         Put put = new Put(row);
@@ -835,6 +874,29 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
             byte[] rowLockBytes = result.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
             return TRowLocks.deserialize(rowLockBytes);
         }
+    }
+
+    @Override
+    public TRowLock[] getRowLocks(List<byte[]> rows) throws IOException {
+        TRowLock[] locks = new TRowLock[rows.size()];
+        List<Get> gets = new LinkedList<>();
+        for (byte[] row : rows) {
+            gets.add(new Get(row).addColumn(LOCK_FAMILY, LOCK_QUALIFIER));
+        }
+
+        Result[] results = table.get(gets);
+        int idx = 0;
+        for (Result result : results) {
+            if (result.isEmpty()) {
+                locks[idx] = TRowLocks.deserialize(null);
+            } else {
+                byte[] rowLockBytes = result.getValue(LOCK_FAMILY, LOCK_QUALIFIER);
+                locks[idx] = TRowLocks.deserialize(rowLockBytes);
+            }
+            idx++;
+        }
+
+        return locks;
     }
 
     @Override
