@@ -45,6 +45,19 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
     void commitSingleRowPutOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException;
 
     /**
+     * Commit single row delete all (empty family map) only Transaction. Delete
+     * all the row including the lock column (rest of Haeinsa treat missing lock column as
+     * STABLE with LONG_MIN commit timestamp. Separate this because Single Row delete all only
+     * transaction can save one checkAndPut operation to complete.
+     * <p>
+     * If TRowLock is changed and checkAndDelete failed, it means transaction is
+     * failed so throw {@link ConflictException}.
+     *
+     * @throws IOException ConflictException, HBase IOException.
+     */
+    void commitSingleRowDeleteAllOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException;
+
+    /**
      * Read {@link TRowLock} from HBase and compare that lock with prevRowLock.
      * If TRowLock is changed, it means transaction is failed, so throw
      * {@link ConflictException}.

@@ -50,6 +50,11 @@ public class ForwardingHaeinsaTable extends ForwardingObject implements HaeinsaT
     }
 
     @Override
+    public void commitSingleRowDeleteAllOnly(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
+        delegate().commitSingleRowDeleteAllOnly(rowState, row);
+    }
+
+    @Override
     public void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
         delegate().checkSingleRowLock(rowState, row);
     }
