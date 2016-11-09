@@ -640,18 +640,10 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
      * @throws NullPointerException if oldLock is null (haven't read lock from HBase)
      */
     @Override
-    public void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException {
+    public void checkSingleRowLock(HaeinsaRowTransaction rowState,
+                                   byte[] row) throws IOException {
         TRowLock currentRowLock = getRowLock(row);
-        if (!rowState.getCurrent().equals(currentRowLock)) {
-            HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
-            HaeinsaTransaction currentTx = tx.getManager().getTransaction(tx.getPrimary().getTableName(), tx.getPrimary().getRow());
-            if (currentTx != null) {
-                if (HaeinsaTransactions.hasSameCommitTimestamp(tx, currentTx)) {
-                    currentTx.recover(true);
-                }
-            }
-            throw new ConflictException("this row is modified, checkSingleRow failed");
-        }
+        compareRowLocks(rowState, currentRowLock, "this row is modified, checkSingleRow failed");
     }
 
     /**
@@ -676,17 +668,24 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
             HaeinsaRowTransaction rowState = row.getFirst();
             TRowLock currentRowLock = locks[idx];
 
-            if (!rowState.getCurrent().equals(currentRowLock)) {
-                HaeinsaTransaction tx = rowState.getTableTransaction().getTransaction();
-                HaeinsaTransaction currentTx = tx.getManager().getTransaction(tx.getPrimary().getTableName(), tx.getPrimary().getRow());
-                if (currentTx != null) {
-                    if (HaeinsaTransactions.hasSameCommitTimestamp(tx, currentTx)) {
-                        currentTx.recover(true);
-                    }
-                }
-                throw new ConflictException("this row is modified, checkMultipleRowLocks failed");
-            }
+            compareRowLocks(rowState, currentRowLock, "this row is modified, checkMultipleRowLocks failed");
             idx++;
+        }
+    }
+
+    private void compareRowLocks(HaeinsaRowTransaction row,
+                                 TRowLock current,
+                                 String message) throws IOException {
+        if (!row.getCurrent().equals(current)) {
+            HaeinsaTransaction tx = row.getTableTransaction().getTransaction();
+            HaeinsaTransaction currentTx = tx.getManager().getTransaction(tx.getPrimary().getTableName(),
+                tx.getPrimary().getRow());
+            if (currentTx != null) {
+                if (HaeinsaTransactions.hasSameCommitTimestamp(tx, currentTx)) {
+                    currentTx.recover(true);
+                }
+            }
+            throw new ConflictException(message);
         }
     }
 
