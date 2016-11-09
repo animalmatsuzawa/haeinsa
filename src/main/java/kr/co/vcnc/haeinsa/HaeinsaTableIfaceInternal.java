@@ -16,6 +16,9 @@
 package kr.co.vcnc.haeinsa;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import kr.co.vcnc.haeinsa.exception.ConflictException;
 import kr.co.vcnc.haeinsa.thrift.generated.TMutationType;
@@ -24,6 +27,7 @@ import kr.co.vcnc.haeinsa.thrift.generated.TRowLockState;
 
 import org.apache.hadoop.hbase.client.Delete;
 import org.apache.hadoop.hbase.client.Table;
+import org.apache.hadoop.hbase.util.Pair;
 
 /**
  * Extended interface from {@link HaeinsaTableIface} which defines private methods that are used to implement transaction.
@@ -66,6 +70,16 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * @throws NullPointerException if oldLock is null (haven't read lock from HBase)
      */
     void checkSingleRowLock(HaeinsaRowTransaction rowState, byte[] row) throws IOException;
+
+    /**
+     * Read {@link TRowLock} from HBase and compare that lock with prevRowLock for each row
+     * If TRowLock is changed, it means transaction is failed, so throw
+     * {@link ConflictException}.
+     *
+     * @throws IOException ConflictException, HBase IOException.
+     * @throws NullPointerException if oldLock is null (haven't read lock from HBase)
+     */
+    void checkMultipleRowLocks(List<Pair<HaeinsaRowTransaction, byte[]>> rows) throws IOException;
 
     /**
      * Prewrite specific row with rowState variable.
@@ -131,6 +145,15 @@ interface HaeinsaTableIfaceInternal extends HaeinsaTableIface {
      * @throws IOException HBase IOException.
      */
     TRowLock getRowLock(byte[] row) throws IOException;
+
+    /**
+     * get all {@link TRowLock}'s from HBase. This method never returns a null TRowLock.
+     *
+     * @param rows the rows
+     * @return row locks
+     * @throws IOException HBase IOException.
+     */
+    TRowLock[] getRowLocks(List<byte[]> rows) throws IOException;
 
     /**
      * Change {@link TRowLock} to {@link TRowLockState#ABORTED} state to roll back
