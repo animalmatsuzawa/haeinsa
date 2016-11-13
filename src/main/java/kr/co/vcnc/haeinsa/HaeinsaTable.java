@@ -63,6 +63,7 @@ import org.apache.hadoop.hbase.client.Table;
 import org.apache.hadoop.hbase.filter.ColumnRangeFilter;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.apache.hadoop.hbase.util.Pair;
+import org.apache.thrift.TBaseHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -822,6 +823,7 @@ public class HaeinsaTable implements HaeinsaTableIfaceInternal {
                 Delete delete = new Delete(row);
                 if (mutation.getRemove().getRemoveFamiliesSize() > 0) {
                     for (ByteBuffer removeFamily : mutation.getRemove().getRemoveFamilies()) {
+                        removeFamily = TBaseHelper.rightSize(removeFamily);
                         delete.addFamily(removeFamily.array(), mutationTimestamp);
                     }
                 }
