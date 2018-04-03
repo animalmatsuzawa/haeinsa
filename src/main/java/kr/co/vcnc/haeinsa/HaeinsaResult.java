@@ -15,8 +15,10 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.KeyValue;
@@ -32,7 +34,7 @@ import com.google.common.collect.Lists;
  */
 public class HaeinsaResult {
     private final List<HaeinsaKeyValue> sortedKVs;
-    private byte[] row;
+    private final byte[] row;
 
     /**
      * Construct HaeinsaResult from Result
@@ -53,6 +55,8 @@ public class HaeinsaResult {
         this.sortedKVs = sortedKVs;
         if (sortedKVs.size() > 0) {
             row = sortedKVs.get(0).getRow();
+        } else {
+            row = null;
         }
     }
 
@@ -95,16 +99,13 @@ public class HaeinsaResult {
      * Transform HBase result to List of HaeinsaKeyValue
      */
     private static List<HaeinsaKeyValue> toHaeinsaKVs(Result result) {
-        List<HaeinsaKeyValue> sorted = Collections.emptyList();
+        final List<HaeinsaKeyValue> sorted;
         if (!result.isEmpty()) {
-            sorted = Lists.transform(
-              result.listCells(),
-              new Function<Cell, HaeinsaKeyValue>() {
-                  @Override
-                  public HaeinsaKeyValue apply(Cell kv) {
-                      return new HaeinsaKeyValue(kv);
-                  }
-              });
+            sorted = Arrays.stream(result.rawCells())
+                .map(kv -> new HaeinsaKeyValue(kv))
+                .collect(Collectors.toList());
+        } else {
+            sorted = Collections.emptyList();
         }
         return sorted;
     }
