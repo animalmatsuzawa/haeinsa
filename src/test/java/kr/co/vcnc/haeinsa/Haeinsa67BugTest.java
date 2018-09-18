@@ -37,6 +37,7 @@ public class Haeinsa67BugTest extends HaeinsaTestBase {
 
     @Test
     public void testRecover() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -81,5 +82,6 @@ public class Haeinsa67BugTest extends HaeinsaTestBase {
 
         testTable.close();
         hTestTable.close();
+        context().dropTable("test");
     }
 }

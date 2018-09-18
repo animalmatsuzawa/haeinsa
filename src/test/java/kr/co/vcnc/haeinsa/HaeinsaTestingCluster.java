@@ -15,6 +15,7 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -27,6 +28,7 @@ import org.apache.hadoop.hbase.HColumnDescriptor;
 import org.apache.hadoop.hbase.HTableDescriptor;
 import org.apache.hadoop.hbase.MiniHBaseCluster;
 import org.apache.hadoop.hbase.TableName;
+import org.apache.hadoop.hbase.client.Admin;
 import org.apache.hadoop.hbase.client.Connection;
 import org.apache.hadoop.hbase.client.ConnectionFactory;
 import org.apache.hadoop.hbase.client.HBaseAdmin;
@@ -49,7 +51,7 @@ public final class HaeinsaTestingCluster {
         return INSTANCE;
     }
 
-    private final MiniHBaseCluster cluster;
+//    private final MiniHBaseCluster cluster;
     private final Configuration configuration;
 
     private final ExecutorService threadPool;
@@ -59,10 +61,13 @@ public final class HaeinsaTestingCluster {
 
     private HaeinsaTestingCluster() throws Exception {
         Configuration conf = HBaseConfiguration.create();
-        HBaseTestingUtility utility = new HBaseTestingUtility(conf);
-        utility.cleanupTestDir();
-        cluster = utility.startMiniCluster();
-        configuration = cluster.getConfiguration();
+//        HBaseTestingUtility utility = new HBaseTestingUtility(conf);
+//        utility.cleanupTestDir();
+//        cluster = utility.startMiniCluster();
+//        configuration = cluster.getConfiguration();
+
+        conf.set("hbase.zookeeper.property.clientPort", "5181");
+        configuration = conf;
 
         threadPool = Executors.newCachedThreadPool();
         connection = ConnectionFactory.createConnection(configuration);
@@ -70,9 +75,9 @@ public final class HaeinsaTestingCluster {
         createdTableNames = Sets.newHashSet();
     }
 
-    public MiniHBaseCluster getCluster() {
-        return cluster;
-    }
+//    public MiniHBaseCluster getCluster() {
+//        return cluster;
+//    }
 
     public Configuration getConfiguration() {
         return configuration;
@@ -92,8 +97,12 @@ public final class HaeinsaTestingCluster {
         if (createdTableNames.contains(tableName)) {
             return;
         }
-        HBaseAdmin admin = new HBaseAdmin(configuration);
-        HTableDescriptor tableDesc = new HTableDescriptor(tableName);
+//        HBaseAdmin admin = new HBaseAdmin(configuration);
+        Admin admin = connection.getAdmin();
+//        HTableDescriptor tableDesc = new HTableDescriptor(tableName);
+
+        HTableDescriptor tableDesc = new HTableDescriptor(TableName.valueOf(tableName));
+
         HColumnDescriptor lockColumnDesc = new HColumnDescriptor(HaeinsaConstants.LOCK_FAMILY);
         lockColumnDesc.setMaxVersions(1);
         lockColumnDesc.setInMemory(true);
@@ -110,12 +119,21 @@ public final class HaeinsaTestingCluster {
         createdTableNames.add(tableName);
     }
 
+    public synchronized void dropTable(String tableName) throws Exception {
+        Admin admin = connection.getAdmin();
+        if (admin.tableExists(TableName.valueOf(tableName))) {
+            admin.deleteTable(TableName.valueOf(tableName));
+        }
+        admin.close();
+    }
+
     public HaeinsaTransactionManager getTransactionManager() {
         return transactionManager;
     }
 
     public void release() throws IOException {
         threadPool.shutdown();
-        cluster.shutdown();
+//        cluster.shutdown();
+//        connection.close();
     }
 }

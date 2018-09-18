@@ -45,6 +45,8 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
     @Test
     public void testTransaction() throws Exception {
+        context().dropTable("test");
+        context().dropTable("log");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final HaeinsaTableIface logTable = context().getHaeinsaTableIface("log");
@@ -288,10 +290,13 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
 
         testTable.close();
         logTable.close();
+        context().dropTable("test");
+        context().dropTable("log");
     }
 
     @Test
     public void testMultiPutAndMultiDelete() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -350,6 +355,7 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         scanner.close();
 
         testTable.close();
+        context().dropTable("test");
     }
 
     @Test
@@ -381,10 +387,12 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         tx.rollback();
 
         testTable.close();
+        context().dropTable("test");
     }
 
     @Test
     public void testSingleRowDeleteAllAndPutShouldFail() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -404,10 +412,12 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         } catch (IllegalArgumentException ex) {
             System.out.println("Success");
         }
+        context().dropTable("test");
     }
 
     @Test
     public void testMultipleRowDeleteAllAndPutShouldFail() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -427,10 +437,12 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         } catch (IllegalArgumentException ex) {
             System.out.println("Success");
         }
+        context().dropTable("test");
     }
 
     @Test
     public void testMultiRowReadOnly() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -471,10 +483,12 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         scanner.close();
 
         testTable.close();
+        context().dropTable("test");
     }
 
     @Test
     public void testConflictAndAbort() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -547,10 +561,12 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         tx.commit();
 
         testTable.close();
+        context().dropTable("test");
     }
 
     @Test
     public void testConflictAndRecover() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final HaeinsaTableIfaceInternal testInternalTable = (HaeinsaTableIfaceInternal) testTable;
@@ -589,14 +605,16 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         tx1 = tm.begin();
         try {
             HaeinsaScan scan = new HaeinsaScan();
-            HaeinsaResultScanner scanner = testTable.getScanner(tx1, scan);
+//            HaeinsaResultScanner scanner = testTable.getScanner(tx1, scan));
+            try (HaeinsaResultScanner scanner = testTable.getScanner(tx1, scan)){
             HaeinsaResult result1 = scanner.next();
             HaeinsaResult result2 = scanner.next();
 
             Assert.assertNull(result2);
             Assert.assertEquals(result1.getValue(Bytes.toBytes("data"), Bytes.toBytes("phoneNumber")), Bytes.toBytes("010-9876-5432"));
             Assert.assertEquals(result1.getRow(), Bytes.toBytes("ymkim"));
-            scanner.close();
+            }
+//            scanner.close();
             tx1.rollback();
             Assert.fail();
         } catch (Exception e) {
@@ -656,6 +674,7 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         tx1.commit();
 
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -663,6 +682,7 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
      */
     @Test
     public void testMultipleMutations() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -743,10 +763,12 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         tx.rollback();
 
         testTable.close();
+        context().dropTable("test");
     }
 
     @Test
     public void testMultipleMutations2() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -849,10 +871,12 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         tx.rollback();
 
         testTable.close();
+        context().dropTable("test");
     }
 
     @Test
     public void testMultipleMutationsWithMultiGet() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -965,12 +989,14 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         tx.rollback();
 
         testTable.close();
+        context().dropTable("test");
     }
     /**
      * Unit test for check get/scan without transaction.
      */
     @Test
     public void testHaeinsaTableWithoutTx() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -1109,10 +1135,12 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         // release resources
         testTable.close();
         hTestTable.close();
+        context().dropTable("test");
     }
 
     @Test
     public void testDanglingRowLockException() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -1176,5 +1204,6 @@ public class HaeinsaUnitTest extends HaeinsaTestBase {
         // release resources
         testTable.close();
         hTestTable.close();
+        context().dropTable("test");
     }
 }

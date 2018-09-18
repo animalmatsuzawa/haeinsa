@@ -27,6 +27,7 @@ public class WithoutTransactionTest extends HaeinsaTestBase {
 
     @Test
     public void testGet() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -76,10 +77,12 @@ public class WithoutTransactionTest extends HaeinsaTestBase {
             Assert.assertEquals(value1, Bytes.toBytes("value1"));
             Assert.assertEquals(value2, Bytes.toBytes("value2"));
         }
+        context().dropTable("test");
     }
 
     @Test
     public void testMultiGet() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -156,5 +159,6 @@ public class WithoutTransactionTest extends HaeinsaTestBase {
             Assert.assertEquals(value3, Bytes.toBytes("value1"));
             Assert.assertEquals(value4, Bytes.toBytes("value2"));
         }
+        context().dropTable("test");
     }
 }

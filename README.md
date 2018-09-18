@@ -6,6 +6,28 @@ Haeinsa is linearly scalable multi-row, multi-table transaction library for HBas
 Haeinsa uses two-phase locking and optimistic concurrency control for implementing transaction.
 The isolation level of transaction is serializable.
 
+## CHANG POINT
+これは[aol/haeinsa](https://github.com/aol/haeinsa)からforkしました。  
+MapR6.0.1にて動作するようにオリジナルから依存関係を変更しています。  
+MapR6.0.1のHBaseAPIには重大なバグがあります。  
+ResultScannerをcloseせずにTableをcloseすると無限ループで処理が戻ってこないバグです。  
+(MapRのサポートに問い合わせましたが、修正する気はないようです）  
+Table.close()する前に必ずResultScanner.close（）を実行してください。  
+
+オリジナルのjunitは、HbaseTestingUtility.startMiniCluster()を使用しているが、本変更では直接MapR Clusterを使用している。  
+テスト用のテーブルは"maprfs:/tmp"に配置される  
+
+This forked from [aol/haeinsa](https://github.com/aol/haeinsa).  
+I am changing the dependency from the original so that it works with MapR 6.0.1.  
+
+There is a serious bug in the HBase API of MapR 6.0.1.  
+If you close the Table without closing the ResultScanner, it is a bug where processing does not come back in an infinite loop.   
+(I have contacted MapR support, but it seems I do not feel like modifying it)  
+Be sure to execute ResultScanner.close() before doing Table.close().  
+
+The original junit uses HbaseTestingUtility.startMiniCluster(), but in this change, it uses direct MapR Cluster.  
+The test table is placed in "maprfs: / tmp".  
+
 ## Features
 
 Please see Haeinsa [Wiki] for further information.

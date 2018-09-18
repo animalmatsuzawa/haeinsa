@@ -43,6 +43,7 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
      */
     @Test
     public void testSimpleIncrement() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -90,13 +91,15 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
         Assert.assertEquals(count.get(), maxIter);
 
         testTable.close();
-    }
+        context().dropTable("test");
+   }
 
     /**
      * Test which executes multiple transactions which increment specific value by single thread and check result using multiGet.
      */
     @Test
     public void testSimpleIncrementWithMultiGet() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -144,6 +147,7 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
         Assert.assertEquals(count.get(), maxIter);
 
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -152,6 +156,7 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
      */
     @Test
     public void testConcurrentRandomIncrement() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -231,6 +236,7 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
 
         // release resources
         testTable.close();
+        context().dropTable("test");
         service.shutdown();
     }
 
@@ -249,6 +255,7 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
      */
     @Test
     public void testSerializability() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
 
@@ -347,6 +354,7 @@ public class HaeinsaComplexTest extends HaeinsaTestBase {
 
         // release resources
         testTable.close();
+        context().dropTable("test");
         service.shutdown();
     }
 

@@ -35,6 +35,7 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
 
     @Test
     public void testHasChanges() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface table = context().getHaeinsaTableIface("test");
 
@@ -98,10 +99,12 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
             table.put(tx, put1);
             Assert.assertTrue(tx.hasChanges());
         }
+        context().dropTable("test");
     }
 
     @Test
     public void testTimeout() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface table = context().getHaeinsaTableIface("test");
         final Table htable = context().getHTableInterface("test");
@@ -153,5 +156,6 @@ public class HaeinsaTransactionTest extends HaeinsaTestBase {
             Assert.assertEquals(rowLock.getCommitTimestamp(), tx.getCommitTimestamp());
             Assert.assertEquals(rowLock.getExpiry(), tx.getExpiry());
         }
-    }
+        context().dropTable("test");
+   }
 }

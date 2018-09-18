@@ -84,13 +84,24 @@
             <organizationUrl>http://www.vcnc.co.kr/</organizationUrl>
         </developer>
     </developers>
-
+    <repositories>
+        <repository>
+            <id>mapr</id>
+            <name>MapR Maven Repository</name>
+            <url>http://repository.mapr.com/maven/</url>
+        </repository>
+    </repositories>
     <dependencies>
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-client</artifactId>
-            <version>1.4.0</version>
+            <version>1.1.8-mapr-1710</version>
         </dependency>
+	    <dependency>
+	      <groupId>com.mapr.fs</groupId>
+	      <artifactId>mapr-hbase</artifactId>
+	      <version>6.0.1-mapr</version>
+	    </dependency>
         <dependency>
           <groupId>org.slf4j</groupId>
           <artifactId>slf4j-api</artifactId>
@@ -121,7 +132,7 @@
         <dependency>
             <groupId>org.apache.hbase</groupId>
             <artifactId>hbase-testing-util</artifactId>
-            <version>1.4.0</version>
+            <version>1.1.8-mapr-1710</version>
             <scope>test</scope>
         </dependency>
         <dependency>

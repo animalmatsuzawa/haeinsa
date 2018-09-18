@@ -38,6 +38,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByGet() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -66,6 +67,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
 
         hTestTable.close();
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -73,6 +75,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByPut() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -110,6 +113,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
 
         hTestTable.close();
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -117,6 +121,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByDelete() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -154,6 +159,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
 
         hTestTable.close();
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -162,6 +168,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByInterRowScan() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -229,6 +236,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
 
         hTestTable.close();
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -237,6 +245,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByIntraRowScan() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -297,6 +306,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
 
         hTestTable.close();
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -305,6 +315,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByMixedPutAndGet() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -361,6 +372,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
 
         hTestTable.close();
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -369,6 +381,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByMixedPutAndDelete() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -428,6 +441,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
 
         hTestTable.close();
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -436,6 +450,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByMixedInterRowScanAndPut() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -468,9 +483,12 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
             HaeinsaScan scan = new HaeinsaScan();
             scan.setStartRow(Bytes.toBytes("row1"));
             scan.setStopRow(Bytes.toBytes("row3"));
-            Iterator<HaeinsaResult> iter = testTable.getScanner(tx, scan).iterator();
+//          Iterator<HaeinsaResult> iter = testTable.getScanner(tx, scan).iterator();
+            try (HaeinsaResultScanner scanner = testTable.getScanner(tx, scan)) {
+            Iterator<HaeinsaResult> iter = scanner.iterator();
             while (iter.hasNext()) {
                 iter.next();
+            }
             }
 
             HaeinsaPut put = new HaeinsaPut(Bytes.toBytes("row4"));
@@ -513,6 +531,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
 
         hTestTable.close();
         testTable.close();
+        context().dropTable("test");
     }
 
     /**
@@ -521,6 +540,7 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
      */
     @Test
     public void testMigrationByMixedIntraRowScanAndPut() throws Exception {
+        context().dropTable("test");
         final HaeinsaTransactionManager tm = context().getTransactionManager();
         final HaeinsaTableIface testTable = context().getHaeinsaTableIface("test");
         final Table hTestTable = context().getHTableInterface("test");
@@ -592,5 +612,6 @@ public class HBaseMigrationTest extends HaeinsaTestBase {
 
         hTestTable.close();
         testTable.close();
+        context().dropTable("test");
     }
 }

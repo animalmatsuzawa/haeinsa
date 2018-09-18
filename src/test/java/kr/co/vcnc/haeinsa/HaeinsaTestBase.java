@@ -15,6 +15,7 @@
  */
 package kr.co.vcnc.haeinsa;
 
+import java.io.File;
 import java.lang.reflect.Method;
 
 import org.apache.hadoop.hbase.client.HTableInterface;
@@ -116,9 +117,14 @@ public class HaeinsaTestBase {
          * @throws Exception if there is a problem instantiating the HaeinsaTable
          */
         public HaeinsaTableIface getHaeinsaTableIface(String tableName) throws Exception {
-            return getCluster().getHaeinsaTable(createContextedTableName(tableName));
+            return getCluster().getHaeinsaTable(BASEDIRNAME + File.separator + createContextedTableName(tableName));
         }
 
+        private static final String BASEDIRNAME = "/tmp";
+
+        public void dropTable(String tableName) throws Exception {
+              CLUSTER.dropTable(BASEDIRNAME + File.separator + createContextedTableName(tableName));
+        }
         /**
          * Create {@link HTableInterface} with table name.
          * The name of the table will be created with {@link #createContextedTableName(String)}.
@@ -128,7 +134,7 @@ public class HaeinsaTestBase {
          * @throws Exception if there is a problem instantiating the HTable
          */
         public Table getHTableInterface(String tableName) throws Exception {
-            return getCluster().getHbaseTable(createContextedTableName(tableName));
+            return getCluster().getHbaseTable(BASEDIRNAME + File.separator + createContextedTableName(tableName));
         }
 
         /**
